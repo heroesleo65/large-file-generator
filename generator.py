@@ -15,7 +15,7 @@ string_random_choice = string.ascii_letters + string.digits + ' '
 @click.option('--output', '-o', required=True, metavar='<output>', help='Файл для вывода')
 def cli(size: int, lines: int, output: str):
     """
-    Генерируем случайный текст размером <size> с кол-вом строк <lines> в стандартный поток.
+    Генерируем случайный текст размером <size> с кол-вом строк <lines> в выходной файл <output>.
 
     Пример использования: large-file-generator -s 10MB -l 42 -o example.txt
     """
