@@ -5,15 +5,19 @@ import string
 import click
 import humanfriendly
 
-string_random_choice = string.ascii_letters + string.digits + ' '
-
 
 @click.command()
 @click.option('--size', '-s', default='10MB', metavar='<size>',
               help='Размер генерируемого файла. Указывается в байтах, KB, MB, GB, TB')
 @click.option('--lines', '-l', default=42, metavar='<lines>', help='Кол-во строк в генерируемом файле')
 @click.option('--output', '-o', required=True, metavar='<output>', help='Файл для вывода')
-def cli(size: int, lines: int, output: str):
+@click.option(
+    '--string_choice',
+    default=string.ascii_letters + string.digits + ' ',
+    metavar='<string_choice>',
+    help='Набор символов для генерации'
+)
+def cli(size: int, lines: int, output: str, string_choice: str):
     """
     Генерируем случайный текст размером <size> с кол-вом строк <lines> в выходной файл <output>.
 
@@ -38,10 +42,10 @@ def cli(size: int, lines: int, output: str):
         )
     string_size = string_size - len(os.linesep)
 
-    generation_text(max_size=size, lines=lines, string_size=string_size, output=output)
+    generation_text(max_size=size, lines=lines, string_size=string_size, output=output, string_choice=string_choice)
 
 
-def generation_text(max_size: int, lines: int, string_size: int, output: str):
+def generation_text(max_size: int, lines: int, string_size: int, output: str, string_choice: str):
     def write_data(f, data, progressbar):
         f.write(data)
         progressbar.update(len(data))
@@ -55,17 +59,19 @@ def generation_text(max_size: int, lines: int, string_size: int, output: str):
             for number in range(lines - 1):
                 min_size_for_line = min(balance, size)
                 max_size_for_line = min(balance + string_size, size)
-                line = generation_line(min_size=min_size_for_line, max_size=max_size_for_line)
+                line = generation_line(
+                    min_size=min_size_for_line, max_size=max_size_for_line, string_choice=string_choice
+                )
                 balance = balance + (string_size - len(line))
                 line = line + os.linesep
                 size = size - len(line)
                 write_data(file, line, generation_progress)
 
-            line = generation_line(min_size=size, max_size=size)
+            line = generation_line(min_size=size, max_size=size, string_choice=string_choice)
             write_data(file, line, generation_progress)
 
 
-def generation_line(min_size: int = 1, max_size: int = 1):
+def generation_line(string_choice: str, min_size: int = 1, max_size: int = 1):
     if max_size <= 0:
         return ''
 
@@ -76,4 +82,4 @@ def generation_line(min_size: int = 1, max_size: int = 1):
         min_size = 1
 
     count = random.randint(min_size, max_size)
-    return ''.join(random.choices(string_random_choice, k=count))
+    return ''.join(random.choices(string_choice, k=count))
