@@ -75,7 +75,7 @@ def generation_text(max_size: int, lines: int, string_size: int, output: str, st
                 length=max_size, label='Generation file', show_percent=True, show_pos=True
         ) as generation_progress:
             for number in range(lines - 1):
-                min_size_for_line = min(string_size // 2, size)
+                min_size_for_line = min(string_size * 3 // 4, size)
                 max_size_for_line = min(string_size, size)
                 line = generation_line(
                     min_size=min_size_for_line, max_size=max_size_for_line, string_choices=string_choices
