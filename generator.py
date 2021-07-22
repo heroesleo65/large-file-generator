@@ -106,13 +106,24 @@ def generation_line(string_choices: dict, min_size: int = 1, max_size: int = 1):
     count_per_size = count // sum_of_size
 
     result = []
-    for k, v in string_choices.items():
-        result.extend(random.choices(v, k=count_per_size))
+    for choices in string_choices.values():
+        result.extend(random.choices(choices, k=count_per_size))
 
-    for size in range(1, count % sum_of_size + 1):
-        if size in string_choices:
-            result.extend(random.choices(string_choices[size], k=count % sum_of_size // size))
-            break
+    # Add remain symbols
+    remain = count % sum_of_size
+    if remain in string_choices:
+        result.extend(random.choices(string_choices[remain], k=1))
+    else:
+        max_size = 0
+        for size, choices in string_choices.items():
+            if size > 0 and remain % size == 0:
+                result.extend(random.choices(choices, k=remain // size))
+                return ''.join(result)
+            elif max_size < size < remain:
+                max_size = size
+
+        if max_size in string_choices:
+            result.extend(random.choices(string_choices[max_size], k=remain // max_size))
 
     return ''.join(result)
 
