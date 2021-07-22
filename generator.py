@@ -1,9 +1,17 @@
 import os
 import random
 import string
+import sys
 
 import click
 import humanfriendly
+
+
+DEFAULT_ENCODING = 'utf-8'
+
+
+def get_size_in_bytes(line: str, encoding=DEFAULT_ENCODING):
+    return len(line.encode(encoding))
 
 
 @click.command()
@@ -30,7 +38,7 @@ def cli(size: int, lines: int, output: str, string_choice: str):
     if lines <= 0:
         lines = 1
     string_size = size // lines
-    if string_size < len(os.linesep):
+    if string_size <= get_size_in_bytes(os.linesep):
         raise click.BadOptionUsage(
             option_name='size',
             message='Указан слишком маленький размер файла. Нельзя сгенерировать данные с указанными условиями',
@@ -40,7 +48,7 @@ def cli(size: int, lines: int, output: str, string_choice: str):
             option_name='lines',
             message='Указано слишком малое количество строк. Нельзя сгенерировать данные с указанными условиями',
         )
-    string_size = string_size - len(os.linesep)
+    string_size = string_size - get_size_in_bytes(os.linesep)
 
     generation_text(max_size=size, lines=lines, string_size=string_size, output=output, string_choice=string_choice)
 
@@ -48,38 +56,66 @@ def cli(size: int, lines: int, output: str, string_choice: str):
 def generation_text(max_size: int, lines: int, string_size: int, output: str, string_choice: str):
     def write_data(f, data, progressbar):
         f.write(data)
-        progressbar.update(len(data))
+        progressbar.update(get_size_in_bytes(data))
 
-    with open(output, 'wt') as file:
+    if not string_choice:
+        raise ValueError('string_choice must contains any symbol')
+
+    string_choices = {}
+    for c in string_choice:
+        size = get_size_in_bytes(c)
+        if size in string_choices:
+            string_choices[size].append(c)
+        else:
+            string_choices[size] = [c]
+
+    with open(output, mode='wt', encoding=DEFAULT_ENCODING) as file:
         size = max_size
-        balance = max_size % lines
         with click.progressbar(
                 length=max_size, label='Generation file', show_percent=True, show_pos=True
         ) as generation_progress:
             for number in range(lines - 1):
-                min_size_for_line = min(balance, size)
-                max_size_for_line = min(balance + string_size, size)
+                min_size_for_line = min(string_size // 2, size)
+                max_size_for_line = min(string_size, size)
                 line = generation_line(
-                    min_size=min_size_for_line, max_size=max_size_for_line, string_choice=string_choice
-                )
-                balance = balance + (string_size - len(line))
-                line = line + os.linesep
-                size = size - len(line)
+                    min_size=min_size_for_line, max_size=max_size_for_line, string_choices=string_choices
+                ) + os.linesep
+                size = size - get_size_in_bytes(line)
+                string_size = size // (lines - number - 1)
                 write_data(file, line, generation_progress)
 
-            line = generation_line(min_size=size, max_size=size, string_choice=string_choice)
+            line = generation_line(min_size=size, max_size=size, string_choices=string_choices)
             write_data(file, line, generation_progress)
 
 
-def generation_line(string_choice: str, min_size: int = 1, max_size: int = 1):
+def generation_line(string_choices: dict, min_size: int = 1, max_size: int = 1):
     if max_size <= 0:
         return ''
 
     if max_size < min_size:
         raise ValueError('max_size must be greater than or equal to min_size')
 
+    if not string_choices:
+        raise ValueError('string_choices must contains any symbol')
+
     if min_size < 1:
         min_size = 1
 
+    sum_of_size = sum(string_choices.keys())
     count = random.randint(min_size, max_size)
-    return ''.join(random.choices(string_choice, k=count))
+    count_per_size = count // sum_of_size
+
+    result = []
+    for k, v in string_choices.items():
+        result.extend(random.choices(v, k=count_per_size))
+
+    for size in range(1, count % sum_of_size + 1):
+        if size in string_choices:
+            result.extend(random.choices(string_choices[size], k=count % sum_of_size // size))
+            break
+
+    return ''.join(result)
+
+
+if __name__ == '__main__':
+    cli(sys.argv[1:])
